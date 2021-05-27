@@ -1,0 +1,2 @@
+/kaggle/working/may_model/202105262048_lgbm_rankgauss, 1.0887571059909897
+/kaggle/working/may_model/202105262314_lgbm_rankgauss_integration, 1.0836447449576838
