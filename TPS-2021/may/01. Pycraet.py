@@ -22,6 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn.metrics import confusion_matrix
+from imblearn.combine import SMOTETomek
 
 import optuna
 import lightgbm as lgb
@@ -53,8 +54,6 @@ def timer(start_time=None):
         tmin, tsec = divmod(temp_sec, 60)
         print('Time taken : %i hours %i minutes and %s seconds.' % (thour, tmin, round(tsec, 2)))    
 
-# %%
-
 os.chdir('/kaggle/working')
 train = pd.read_csv('../input/tabular-playground-series-may-2021/train.csv')
 test = pd.read_csv('../input/tabular-playground-series-may-2021/test.csv')
@@ -65,7 +64,7 @@ test = test.drop(['id'], axis=1)
 
 train['target'] = LabelEncoder().fit_transform(train['target'])
 
-# %% NOTE save model template
+# NOTE save model template
 
 def save_trained_classifier(model, title, score, save_directory):
     model_file = dtnow() + '_' + title
@@ -80,7 +79,7 @@ save_directory = "/kaggle/working/may_model"
 if not os.path.exists(save_directory):
     os.makedirs(save_directory)
 
-# %% ANCHOR rankgauss
+# ANCHOR rankgauss
 
 def rank_gauss(x):
     N = x.shape[0]
@@ -277,10 +276,17 @@ print('prediction accuracy', pred_accuracy_score2,' recall ', pred_recall_score2
 cnf_matrix2 = confusion_matrix(y_test, y_test_pred2, labels=labeles)
 plot_confusion_matrix(cnf_matrix2, classes=classes,normalize=True,  title='Confusion matrix')
 
+# %%
+
 
 # %% ANCHOR 4. Optuna + LightGBM 
-from tqdm import tqdm
-DEBUG = True
+from sklearn.utils import class_weight
+class_weight_list = class_weight.compute_class_weight('balanced', np.unique(y), y)
+class_weight_map = dict()
+for i in range(len(np.unique(y))):
+    class_weight_map[i] = class_weight_list[i]
+
+DEBUG = False
 
 if DEBUG == True:
     N_SPLITS = 2 
@@ -301,12 +307,13 @@ params = {
     'metric': 'multi_logloss',
     'num_class': 4,
     'boosting': 'gbdt',
-    'metric': 'multi_logloss'
+    'metric': 'multi_logloss',
+    'verbose': -1
     # 'num_threads': 4
     # 'device': 'gpu'
 }
 exp_counter = 0
-def objective(trial, X_train, y_train, params):
+def objective(trial, X_train, y_train, params, class_weight_map):
     # x_train, y_train: ndarray
     start_time = timer()    
     global exp_counter
@@ -340,11 +347,17 @@ def objective(trial, X_train, y_train, params):
     # pruning_callback = optuna.integration.LightGBMPruningCallback(trial, "auc") # depends on the choice of eval_metric; "validation_0-logloss"
     rskf = RepeatedStratifiedKFold(n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=SEED)
     pruning_callback = optuna.integration.LightGBMPruningCallback(trial, "multi_logloss")
-    for i, (train_index, valid_index) in tqdm(enumerate(rskf.split(X_train, y_train))):
+    for i, (train_index, valid_index) in enumerate(rskf.split(X_train, y_train)):
         print(f"{exp_counter} - {i}")
         X_A, X_B = X_train.iloc[train_index, :], X_train.iloc[valid_index, :]
         y_A, y_B = y_train.iloc[train_index], y_train.iloc[valid_index]
-        lgb_train = lgb.Dataset(X_A, y_A)
+        
+        # # It doesn't work.
+        # smo_tek = SMOTETomek(random_state=0) 
+        # X_smotek, y_smotek = smo_tek.fit_resample(X_A, y_A)
+        
+        lgb_train = lgb.Dataset(X_A, y_A, weight=y_A.map(class_weight_map)) # https://tinyurl.com/yzdao9nr
+        # lgb_train = lgb.Dataset(X_smotek, y_smotek) # it doesn't work
         lgb_valid = lgb.Dataset(X_B, y_B, reference=lgb_train)   
         lgbm_model = lgb.train(
             params, 
@@ -352,7 +365,7 @@ def objective(trial, X_train, y_train, params):
             valid_sets=[lgb_train, lgb_valid],
             valid_names=['train', 'valid_0'],
             num_boost_round=10000,
-            verbose_eval = -1, # https://tinyurl.com/yhdmtdm8    
+            verbose_eval = False, # https://tinyurl.com/yhdmtdm8    
             early_stopping_rounds=20,
             callbacks=[pruning_callback]
         )             
@@ -380,7 +393,7 @@ study = optuna.create_study(
     sampler = optuna.samplers.TPESampler(seed=2021, multivariate=True),
     pruner = optuna.pruners.MedianPruner(n_warmup_steps=3))
 
-study.optimize(lambda trial: objective(trial, Xtrn, y, params), 
+study.optimize(lambda trial: objective(trial, Xtrn, y, params, class_weight_map), 
                n_trials=N_TRIALS, 
                timeout=TIMEOUT, 
                callbacks=[save_best],
@@ -394,12 +407,12 @@ print(f"{'best objective value':>20s} : {study.best_value}")
 best_model=study.user_attrs["best_booster"]               
 
 score = study.best_value
-model_pickle = save_trained_classifier(best_model, 'lgbm_1min', score, save_directory)  
+model_pickle = save_trained_classifier(best_model, 'lgbm_7f6r_class_weight', score, save_directory)  
 
 lgbm_pickle = pickle.load(open(model_pickle, 'rb'))
 lgbm_pickle.predict(Xtst)
 
-# %% ANCHOR 10 FOLD RANKGAUSS VALLINA LGBM
+# %% ANCHOR retrain .... under construction
 N_SPLITS = 8 
 N_REPEATS = 5
 SEED = 2021   
