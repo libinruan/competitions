@@ -208,7 +208,7 @@ h_model_6B = [ # base on #6
     Dense(NUM_CLASS, activation='softmax')
 ]
 
-head_nn_models = [h_model_1A, h_model_6A] # TODO number of heads        
+head_nn_models = [h_model_1A, h_model_6B] # TODO number of heads        
 
 # custom  weighted categorical crossentropy for Keras
 
@@ -325,6 +325,8 @@ def define_hydra_model(heads):
 hydra_model_df = define_hydra_model(hydra_heads_models_df)
 
 from keras import regularizers
+
+tf.keras.backend.clear_session()
 
 def define_hydra_model(heads):
     for i in range(len(heads)):

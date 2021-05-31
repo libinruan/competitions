@@ -1,5 +1,0 @@
-/kaggle/working/may_model/202105262048_lgbm_rankgauss, 1.0887571059909897
-/kaggle/working/may_model/202105262314_lgbm_rankgauss_integration, 1.0836447449576838
-/kaggle/working/may_model/202105271625_lgbm_1min, 1.0994204569278652
-/kaggle/working/may_model/202105271643_lgbm_8f5r_integration_vallina, 1.09950103560122
-/kaggle/working/202105271837_lgbm_7f3r_100iter.pkl, 1.0968508238478782

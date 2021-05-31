@@ -208,7 +208,31 @@ h_model_6B = [ # base on #6
     Dense(NUM_CLASS, activation='softmax')
 ]
 
-head_nn_models = [h_model_1A, h_model_6A] # TODO number of heads        
+h_model_6C = [ # base on #6
+    Embedding(100, 16, input_length = NUM_FEATURES),
+    Flatten(),
+    Dense(512, activation='relu'),
+    BatchNormalization(),
+    Dropout(0.5),
+    Dense(128, activation='relu'),
+    BatchNormalization(), 
+    Dropout(0.25),
+    Dense(NUM_CLASS, activation='softmax')
+]
+
+h_model_6D = [ # base on #6
+    Embedding(100, 16, input_length = NUM_FEATURES),
+    Flatten(),
+    Dense(64, activation='relu'),
+    BatchNormalization(),
+    Dropout(0.5),
+    Dense(64, activation='relu'),
+    BatchNormalization(), 
+    Dropout(0.25),
+    Dense(NUM_CLASS, activation='softmax')
+]
+
+head_nn_models = [h_model_1A, h_model_6D] # TODO number of heads        
 
 # custom  weighted categorical crossentropy for Keras
 
@@ -235,7 +259,7 @@ def fit_hydra_head_model(fX_train, fy_train, fX_valid, fy_valid, n_model):
     
     oy_train = to_categorical(fy_train) # https://www.tensorflow.org/api_docs/python/tf/keras/utils/to_categorical
     oy_valid = to_categorical(fy_valid)
-    
+
     model = Sequential(head_nn_models[n_model])
     
     if WEIGHTED_TRAINING: # WEIGHTED TRAINING 05281348 
@@ -283,6 +307,8 @@ train_hydra_df()
 
 
 from keras import regularizers
+
+tf.keras.backend.clear_session()
 
 def define_hydra_model(heads):
     for i in range(len(heads)):
@@ -385,7 +411,8 @@ history = hydra_model_df.fit(prepare_input_data(hydra_model_df, X_train),
 plot_model_learning(history)
 
 
-# %%
+# -----------
+
 # Lets look what Hydra sees
 y_valud_preds_df = hydra_model_df.predict(prepare_input_data(hydra_model_df, X_valid), verbose=0)
 
@@ -412,7 +439,7 @@ sub = pd.read_csv("/kaggle/input/tabular-playground-series-may-2021/sample_submi
 
 predictions_df = pd.DataFrame(output, columns = ["Class_1", "Class_2", "Class_3", "Class_4"])
 predictions_df['id'] = sub['id']
-predictions_df.to_csv(f"{dtnow()}-TPS-05-hydra_df_blended_submission.csv", index = False)
+predictions_df.to_csv(f"{dtnow()}-TPS-05-hydra_df_blended_submission-1A6C.csv", index = False)
 
 predictions_df.drop("id", axis=1).describe().T.style.bar(subset=['mean'], color='#205ff2')\
                             .background_gradient(subset=['std'], cmap='Reds')\

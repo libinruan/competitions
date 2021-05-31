@@ -34,3 +34,13 @@ blob = bucket.blob(f'{gcs_folder}{local_filename}')
 blob.upload_from_filename(f'{local_folder}{local_filename}')   
 print(f'local: {local_folder}{local_filename}')
 print(f'remote: {gcs_folder}{local_filename}')
+
+""" pickle
+import pickle
+pickle.dump(test, open('./test.pkl', 'wb'))
+gcs_folder = 'tps-may-2021-label/'
+local_filename = 'test.pkl'
+local_folder = './'
+blob = bucket.blob(f'{gcs_folder}{local_filename}')
+blob.upload_from_filename(f'{local_folder}{local_filename}') 
+"""
